@@ -1,13 +1,37 @@
 package main
 
 import (
-	"fmt"
 	"math/rand"
 	"strconv"
 	"time"
 
+	"encoding/json"
+	"os"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
+
+type Save struct {
+	Score int `json:"score"`
+}
+
+func Load(filename string) int {
+	var save Save
+
+	file, _ := os.Open(filename)
+
+	decoder := json.NewDecoder(file)
+	_ = decoder.Decode(&save)
+
+	return save.Score
+}
+
+func SaveGame(save Save, filename string) {
+	file, _ := os.Create(filename)
+
+	encoder := json.NewEncoder(file)
+	_ = encoder.Encode(save)
+}
 
 func main() {
 
@@ -32,14 +56,19 @@ func main() {
 	var down_tube_height = 150
 	var top_tube_height = 125
 
-	var score int = 0
+	var score int = Load("save.json")
 	var string_score string = strconv.Itoa(score)
 	var isScore bool = true
+
+	var count_tubes int = 0
+	var best_tubes int = score
+
+	close_button := rl.Rectangle{X: 575, Y: 0, Width: 25, Height: 25}
 
 	for !rl.WindowShouldClose() {
 		rl.BeginDrawing()
 
-		//Падение
+		//Fall
 		if isJump {
 			character_y += velocity
 			velocity -= -9.81 / 75
@@ -56,10 +85,11 @@ func main() {
 		rl.DrawRectangle(int32(tubes_x), top_tube.ToInt32().Y, top_tube.ToInt32().Width, int32(top_tube_height), rl.DarkGray)
 		rl.DrawRectangle(int32(tubes_x), int32(down_tube_y), down_tube.ToInt32().Width, int32(down_tube_height), rl.DarkGray)
 		rl.DrawRectangle(int32(character.X), int32(character_y), int32(character.Width), int32(character.Height), rl.LightGray)
+		rl.DrawRectangle(int32(close_button.X), int32(close_button.Y), int32(close_button.Width), int32(close_button.Height), rl.Black)
 
 		rl.DrawText(string_score, 9, 9, 50, rl.Black)
 
-		//Изменение координат труб
+		//Changing pipe coordinates
 		if isJump {
 			tubes_x -= tubes_speed
 		}
@@ -71,19 +101,33 @@ func main() {
 			down_tube_y = window_height - down_tube_height
 
 			isScore = true
+			count_tubes += 1
 		}
 
-		//Cтолкновение труб с героем
+		//Close and save
+		if rl.CheckCollisionPointRec(rl.GetMousePosition(), close_button) {
+			if rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
+				save := Save{Score: score}
+
+				SaveGame(save, "save.json")
+
+				rl.EndDrawing()
+				rl.CloseWindow()
+			}
+		}
+
+		//Colliding pipes with the hero
 		if rl.CheckCollisionRecs(character, top_tube) || rl.CheckCollisionRecs(character, down_tube) {
 			isJump = false
 			character_y = 225
 			tubes_speed = 1
 			tubes_x = 500
 			score = 0
+			count_tubes = 0
 			string_score = strconv.Itoa(score)
 		}
 
-		//Прыжок
+		//Jump
 		if rl.IsKeyPressed(rl.KeySpace) {
 			character_y -= 40
 			velocity = 0
@@ -91,24 +135,27 @@ func main() {
 			tubes_speed += 0.05
 		}
 
-		//Столкновение с землёй
+		//Collision with the ground
 		if character_y >= float32(window_height) {
 			isJump = false
 			character_y = 225
 			tubes_speed = 1
 			tubes_x = 500
+			count_tubes = 0
 			score = 0
 			string_score = strconv.Itoa(score)
 		}
 
-		//Начисление очков
+		//Scoring
 		if rl.CheckCollisionRecs(character, score_line) && isScore {
-			score += 1
+			if count_tubes >= best_tubes {
+				score += 1
+			}
 			string_score = strconv.Itoa(score)
 			isScore = false
-			fmt.Println(score)
 		}
 
 		rl.EndDrawing()
+
 	}
 }
