@@ -60,6 +60,9 @@ func main() {
 	var string_score string = strconv.Itoa(score)
 	var isScore bool = true
 
+	var count_try int = 0
+	score_list := []int{}
+
 	var count_tubes int = 0
 	var best_tubes int = score
 
@@ -107,7 +110,15 @@ func main() {
 		//Close and save
 		if rl.CheckCollisionPointRec(rl.GetMousePosition(), close_button) {
 			if rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
-				save := Save{Score: score}
+				max_score := score_list[0]
+
+				for _, value := range score_list {
+					if value > max_score {
+						max_score = value
+					}
+				}
+
+				save := Save{Score: max_score}
 
 				SaveGame(save, "save.json")
 
@@ -122,9 +133,11 @@ func main() {
 			character_y = 225
 			tubes_speed = 1
 			tubes_x = 500
-			score = 0
 			count_tubes = 0
 			string_score = strconv.Itoa(score)
+			score_list = append(score_list, score)
+			count_try += 1
+			score = 0
 		}
 
 		//Jump
@@ -142,8 +155,10 @@ func main() {
 			tubes_speed = 1
 			tubes_x = 500
 			count_tubes = 0
-			score = 0
 			string_score = strconv.Itoa(score)
+			score_list = append(score_list, score)
+			count_try += 1
+			score = 0
 		}
 
 		//Scoring
